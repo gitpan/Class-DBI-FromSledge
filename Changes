@@ -1,4 +1,7 @@
 Revision history for Perl extension Class::DBI::FromSledge
 
+0.02  Wed Apr 12 13:00:14 2006
+    - date operation
+
 0.01  Sat Mar 11 18:34:45 2006
     - original version

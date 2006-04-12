@@ -2,7 +2,7 @@ package Class::DBI::FromSledge;
 use strict;
 use warnings;
 use base qw/Class::DBI::Plugin/;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 use Carp;
 
 sub create_from_sledge : Plugged {
@@ -12,8 +12,12 @@ sub create_from_sledge : Plugged {
 
     my $cols = $args || {};
     for my $col ($class->columns) {
-        if ($page->valid->check($col) and not $cols->{$col}) {
-            $cols->{$col} = &_get_val($page, $col);
+        unless ($cols->{$col}) {
+            if ($page->valid->check($col)) {
+                $cols->{$col} = &_get_val($page, $col);
+            } elsif ($page->valid->check("$col\_year")) {
+                $cols->{$col} =  sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_")} qw(year month day);
+            }
         }
     }
 
@@ -28,6 +32,8 @@ sub update_from_sledge : Plugged {
     for my $col ($self->columns('All')) {
         if ($page->valid->{PLAN}->{$col}) {
             $self->set($col => &_get_val($page, $col));
+        } elsif ($page->valid->{PLAN}->{"$col\_year"}) {
+            $self->set($col => sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_") || 0} qw(year month day));
         }
     }
 
