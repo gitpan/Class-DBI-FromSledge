@@ -1,5 +1,9 @@
 Revision history for Perl extension Class::DBI::FromSledge
 
+0.03  Fri Feb 23 17:43:45 JST 2007
+    - update_from_sledge: you can set the optional arguments
+      (update|create)_from_sledge: check check check the arguments.
+
 0.02  Wed Apr 12 13:00:14 2006
     - date operation
 

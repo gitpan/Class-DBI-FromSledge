@@ -2,7 +2,7 @@ package Class::DBI::FromSledge;
 use strict;
 use warnings;
 use base qw/Class::DBI::Plugin/;
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 use Carp;
 
 sub create_from_sledge : Plugged {
@@ -13,10 +13,18 @@ sub create_from_sledge : Plugged {
     my $cols = $args || {};
     for my $col ($class->columns) {
         unless ($cols->{$col}) {
-            if ($page->valid->check($col)) {
+            if ($page->valid->{PLAN}->{$col}) {
                 $cols->{$col} = &_get_val($page, $col);
-            } elsif ($page->valid->check("$col\_year")) {
-                $cols->{$col} =  sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_")} qw(year month day);
+            } elsif ($page->valid->{PLAN}->{"$col\_year"}) {
+                if ($page->r->param("$col\_year")) {
+                    $cols->{$col} =  sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_")} qw(year month day);
+
+                    if ($page->valid->{PLAN}->{"$col\_hour"}) {
+                        $cols->{$col} = $cols->{$col} . " " . sprintf '%02d:%02d:%02d', map {$page->r->param("$col\_$_")} qw(hour minute second);
+                    }
+                } else {
+                    $cols->{$col} = undef;
+                }
             }
         }
     }
@@ -25,7 +33,7 @@ sub create_from_sledge : Plugged {
 }
 
 sub update_from_sledge : Plugged {
-    my ($self, $page) = @_;
+    my ($self, $page, $args) = @_;
     croak "update_from_sledge cannot be called as a class method" unless ref $self;
     croak "error detected at validator" if $page->valid->is_error;
 
@@ -33,8 +41,22 @@ sub update_from_sledge : Plugged {
         if ($page->valid->{PLAN}->{$col}) {
             $self->set($col => &_get_val($page, $col));
         } elsif ($page->valid->{PLAN}->{"$col\_year"}) {
-            $self->set($col => sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_") || 0} qw(year month day));
+            if ($page->r->param("$col\_year")) {
+                my $ymd = sprintf '%d-%02d-%02d', map {$page->r->param("$col\_$_") || 0} qw(year month day);
+
+                if ($page->r->param("$col\_hour")) {
+                    $self->set($col => $ymd . " " . sprintf '%02d:%02d:%02d', map {$page->r->param("$col\_$_")} qw(hour minute second));
+                } else {    
+                    $self->set($col => $ymd);
+                }
+            } else {
+                $self->set($col => undef);
+            }
         }
+    }
+
+    while (my ($col, $val) = each %{$args}) {
+        $self->set($col => $val);
     }
 
     $self->update;
